@@ -1,4 +1,4 @@
-import type { Pos } from "../App";
+import type { Pos } from "../Scroller";
 
 export type DisplayContent = [ 'video' | 'image', string ];
 

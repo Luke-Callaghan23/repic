@@ -8,7 +8,7 @@ import PWABadge from './PWABadge.tsx'
 // import {video} from './content/video.tsx';
 // import {video2} from './content/video2.tsx';
 // import {video3} from './content/video3.tsx';
-import { Displayable, type DisplayableProps } from './components/Displayable.tsx'
+import { Displayable } from './components/Displayable.tsx'
 import { useLocation } from 'react-router-dom';
 import type { DataURL, ListedFile } from './App.tsx';
 

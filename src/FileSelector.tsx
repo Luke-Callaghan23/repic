@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ListedFile } from './App';
 import { useNavigate } from 'react-router-dom';
-import type { ScrollerNavigateState, ScrollerProps } from './Scroller';
+import type { ScrollerNavigateState } from './Scroller';
 
 
 export function FileSelector () {

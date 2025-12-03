@@ -156,14 +156,26 @@ ul {
 .image {
   position: relative;
   width: 100%;
+  -webkit-text-stroke: 1px black;
+  color: white;
+  font-size: 25px;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 
 .image-text {
   position: absolute;
   bottom: 10px;
   left:  10px;
-  -webkit-text-stroke: 1px black;
-  color: white;
-  font-size: 25px;
-  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+
+.memory-text {
+  position: absolute;
+  top: 10px;
+  right:  10px;
+}
+
+.filename-text {
+  position: absolute;
+  bottom: 10px;
+  right:  10px;
 }

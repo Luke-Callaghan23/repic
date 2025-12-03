@@ -24,13 +24,38 @@ const initalMovementWindow: MovementWindow = [
     [0, 0],
 ];
 
-export interface ScrollerProps {
+export interface ScrollerNavigateState {
     files: ListedFile[] | null,
 }
 
 const ALLOCATE_COUNT = 10;
 
-export function Scroller() {
+export interface ScrollerProps {
+    memory: number | null;
+}
+
+function b64toBlob(b64Data: string, contentType: string, sliceSize = 512) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+
+    const blob = new Blob(byteArrays, { type: contentType });
+    return URL.createObjectURL(blob);
+}
+
+
+export function Scroller({ memory }: ScrollerProps) {
     const [ displayables, setDisplayables ] = useState<ListedFile[] | null>();
 
     const downPosition = useRef<Pos>(null);
@@ -124,6 +149,9 @@ export function Scroller() {
 
             // Revoke the url and set the data to unloaded
             URL.revokeObjectURL(file.data.data);
+            if (file.data.posterUrl) {
+                URL.revokeObjectURL(file.data.posterUrl);
+            }
             file.data = { loaded: false };
             updatedDisplayablesIndeces.push(fileIndex);
         }
@@ -152,9 +180,9 @@ export function Scroller() {
             console.log("ALLOCATING: " + file.file.name);
 
             const reader = new FileReader();
-            reader.readAsDataURL(file.file);
+            reader.readAsArrayBuffer(file.file);
             reader.onloadend = ev => {
-                const dataUrl: DataURL = ev!.target!.result! as DataURL;
+                const arrayBuffer = ev!.target!.result as ArrayBuffer;
 
                 // Once the reader returns data, search for this file in the files
                 //      state and update it
@@ -164,19 +192,75 @@ export function Scroller() {
                     return prevList.map(prev => {
                         //
                         if (prev.file === file.file) {
+
+                            let dataUrl: DataURL;
+                            let posterUrl: DataURL | undefined;
+                            
+                            // If the document is .html, try to parse a video and poster image
+                            //      from the html contents
+                            if (file.file.name.endsWith('.html')) {
+                                try {
+                                    const decoder = new TextDecoder('utf-8');
+                                    const html = decoder.decode(arrayBuffer);
+
+                                    // Attempt to parse the mime and base64 data from the html
+                                    const mimeDataSplit = html.split('src="data:')[1].split(',');
+                                    let [ mime, mp4AndEtc ] = mimeDataSplit;
+
+                                    // If the mime doesn't seem right, use a default
+                                    if (!mime.startsWith('video')) {
+                                        mime = "video/mp4";
+                                    }
+                                    
+                                    // Create a blob from the mp4 data
+                                    const mp4 = mp4AndEtc.split('"')[0];
+                                    const mp4Url = b64toBlob(mp4, mime);
+                                    dataUrl = mp4Url;
+                                    
+                                    try {
+
+                                        // Similar as above, but for the poster
+                                        // The poster is pretty much optional, so it doesn't really matter
+                                        //      if we are unable to parse it from the html
+                                        const posterMimeDataSplit = html.split('poster="data:')[1].split(',');
+                                        let [ posterMime, posterAndEtc ] = posterMimeDataSplit;
+                                        if (!posterMime.startsWith("image")) {
+                                            posterMime = "image/png";
+                                        }
+
+                                        const posterImage = posterAndEtc.split('"')[0];
+                                        const posterImageUrl = b64toBlob(posterImage, "image/png");
+                                        posterUrl = posterImageUrl;
+                                    }
+                                    // Can just ignore it if the poster image parsing failed
+                                    catch (err: any) {}
+                                }
+                                catch (err: any) {
+                                    return prev;
+                                }
+                            }
+                            else {
+                                // For most file types, just read the data and create a Blob
+                                const buffer = new Uint8Array(arrayBuffer!);
+                                const blob = new Blob([buffer], { type: file.file.type });
+                                dataUrl = URL.createObjectURL(blob);
+                            }
                             
                             if (prev.data.loaded) {
                                 // If the previous is somehow loaded already,
                                 //      revoke this data url and return
                                 URL.revokeObjectURL(dataUrl);
+                                if (posterUrl) URL.revokeObjectURL(posterUrl);
                                 return prev;
                             }
+
 
                             return {
                                 file: prev.file,
                                 data: {
                                     loaded: true,
-                                    data: dataUrl
+                                    data: dataUrl,
+                                    posterUrl: posterUrl,
                                 }
                             }
                         }
@@ -197,7 +281,7 @@ export function Scroller() {
     }, [ displayables ]);
 
     const location = useLocation();
-    const { files } = (location.state || {}) as ScrollerProps;
+    const { files } = (location.state || {}) as ScrollerNavigateState;
     if (!files && !displayables) {
         return <>
             <h2>No files retrieved.  please return to file select.</h2>
@@ -324,6 +408,7 @@ export function Scroller() {
                 ref={containerRef}
             >
                 {displayables && <Displayable 
+                    memory={memory}
                     file={displayables[displayableIndex]} 
                     offset={offset} 
                     idx={displayableIndex}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ListedFile } from './App';
 import { useNavigate } from 'react-router-dom';
-import type { ScrollerProps } from './Scroller';
+import type { ScrollerNavigateState, ScrollerProps } from './Scroller';
 
 
 export function FileSelector () {
@@ -26,12 +26,24 @@ export function FileSelector () {
 
             const sorted = fileList.sort((a, b) => {
                 try {
-                    const idxA = parseInt(a.file.name.split('_')[1].split('.')[0]);
-                    const idxB = parseInt(b.file.name.split('_')[1].split('.')[0]);
-                    return idxA - idxB;
+
+                    const [ prefA, remA ]  = a.file.name.split('_');
+                    const [ prefB, remB ]  = b.file.name.split('_');
+                    if (prefA !== prefB) {
+                        return a.file.name.localeCompare(b.file.name);
+                    }
+
+                    const idxA = parseInt(remA.split('.')[0]);
+                    const idxB = parseInt(remB.split('.')[0]);
+                    if (idxA !== idxB) {
+                        return idxA - idxB;
+                    }
+                    else {
+                        return a.file.name.localeCompare(b.file.name);
+                    }
                 }
                 catch (err: any) {
-                    return Math.random() - 0.5;
+                    return a.file.name.localeCompare(b.file.name);
                 }
             });
 
@@ -48,7 +60,7 @@ export function FileSelector () {
 
         console.log({displayingFiles})
 
-        const files: ScrollerProps = {
+        const files: ScrollerNavigateState = {
             files: displayingFiles
         }
         navigate('/carousel', {
@@ -106,7 +118,7 @@ export function FileSelector () {
             <label htmlFor="fileUpload">Choose files:&nbsp;&nbsp;&nbsp;</label>
             <input 
                 type="file" 
-                accept='image/*'
+                accept='image/*,video/*,text/html'
                 id="fileUpload" 
                 name="files[]" 
                 multiple

@@ -1,7 +1,7 @@
 import './style/index.css';
 import './style/App.css';
 
-import { StrictMode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Scroller } from './Scroller';
 import { FileSelector } from './FileSelector';
@@ -15,14 +15,35 @@ export type ListedFile = {
     } | {
         loaded: true,
         data: DataURL,
+        posterUrl?: DataURL
     }
 };
 
 function App() {
+
+    const [ memoryInfo, setMemoryInfo ] = useState<number | null>(null);
+
+    useEffect(() => {
+        const updateMemory = () => {
+            // @ts-ignore
+            if (window.performance && window.performance.memory && window.performance.memory.totalJSHeapSize) {
+                //@ts-ignore
+                setMemoryInfo(window.performance.memory.totalJSHeapSize);
+            }
+        };
+
+        //@ts-ignore
+        if (window.performance && window.performance.memory && window.performance.memory.totalJSHeapSize) {
+            const intervalId = setInterval(updateMemory, 1000); // Update every second
+            updateMemory(); // Initial update
+            return () => clearInterval(intervalId);
+        }
+    }, []);
+
     return <Router>
         <Routes>
             <Route path="/" element={<FileSelector />} />
-            <Route path="/carousel" element={<Scroller />} />
+            <Route path="/carousel" element={<Scroller memory={memoryInfo} />} />
         </Routes>
     </Router>
 }

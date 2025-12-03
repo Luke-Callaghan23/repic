@@ -1,14 +1,16 @@
-import { StrictMode, useEffect, useRef, type MouseEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { useState } from 'react'
 import PWABadge from './PWABadge.tsx'
 
-import {image} from './content/image.tsx';
-import {image2} from './content/image2.tsx';
-import {image3} from './content/image3.tsx';
+// import {image} from './content/image.tsx';
+// import {image2} from './content/image2.tsx';
+// import {image3} from './content/image3.tsx';
 // import {video} from './content/video.tsx';
 // import {video2} from './content/video2.tsx';
 // import {video3} from './content/video3.tsx';
-import { Displayable, type DisplayContent } from './components/Displayable.tsx'
+import { Displayable, type DisplayableProps } from './components/Displayable.tsx'
+import { useLocation } from 'react-router-dom';
+import type { DataURL, ListedFile } from './App.tsx';
 
 export type Pos = [ number, number ];
 export type MovementWindow = [Pos, Pos, Pos, Pos, Pos, Pos];
@@ -22,32 +24,36 @@ const initalMovementWindow: MovementWindow = [
     [0, 0],
 ];
 
+export interface ScrollerProps {
+    files: ListedFile[] | null,
+}
+
+const ALLOCATE_COUNT = 10;
+
 export function Scroller() {
+    const [ displayables, setDisplayables ] = useState<ListedFile[] | null>();
+
     const downPosition = useRef<Pos>(null);
     const [ offset, setOffset ] = useState<Pos | null>(null);
     const [ latestPosition, setLatestPosition ] = useState<Pos | null>(null);
 
-    const [ displayables, setDisplayables ] = useState<DisplayContent[]>([
-        [ 'image', image ],
-        [ 'image', image2 ],
-        [ 'image', image3 ],
-        // [ 'video', video ],
-        // [ 'video', video2 ],
-        // [ 'video', video3 ],
-    ]);
     const [ displayableIndex, setDisplayableIndex ] = useState<number>(0);
-    const moveDisplayableIndex = (direction: -1 | 1) => {
+    const moveDisplayableIndex = (direction: -1 | 1 | 0) => {
+        if (!displayables) return;
         reset();
         setDisplayableIndex(currentIdx => {
-            const tmp = (currentIdx + direction);
-            if (tmp < 0) {
-                return displayables.length - 1;
+
+            let nextIdx = (currentIdx + direction);
+            if (nextIdx < 0) {
+                nextIdx = displayables.length - 1;
             }
-            else if (tmp === displayables.length) {
-                return 0;
+            else if (nextIdx === displayables.length) {
+                nextIdx = 0;
             }
-            else return tmp;
-        })
+
+            allocateFiles(nextIdx);
+            return nextIdx;
+        });
     };
 
     const reset = () => {
@@ -59,6 +65,149 @@ export function Scroller() {
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [ movementWindow, setMovementWindow ] = useState<MovementWindow>(initalMovementWindow);
+
+    // NOTE: it is assumed that all files that are NOT the files provided to this function should be
+    //      deallocated
+    const allocateFiles = (currentIdx: number) => {
+        if (!displayables) return;
+
+        // Get a wrap-around slice of the displayables, centered around currentIdx
+        //      with a total count of ALLOCATE_COUNT
+        let start = currentIdx - (Math.floor(ALLOCATE_COUNT / 2));
+        let end = currentIdx + (Math.ceil(ALLOCATE_COUNT / 2) - 1)
+        if (start < 0) {
+            start = displayables.length + start;
+        }
+        
+        if (end >= displayables.length) {
+            end = end - displayables.length;
+        }
+        
+        let slice: ListedFile[];;
+        if (start > end) {
+            const sliceA = displayables.slice(start, displayables.length);
+            const sliceB = displayables.slice(0, end+1);
+            slice = [
+                ...sliceA,
+                ...sliceB
+            ]
+        }
+        else {
+            slice = displayables.slice(start, end+1);
+        }
+
+        const toAllocate: ListedFile[] = slice;
+
+
+        // Deallocate all other files that are not a part of this list
+        // Updates array is really just a clone of the normal displayables array
+        const updates = [ ...displayables ];
+        
+        // Store the indeces to update
+        let updatedDisplayablesIndeces: number[] = [];
+
+        // Iterate over all displayables and search for any that are allocated 
+        //      but are not a part of the toAllocate array
+        for (let fileIndex = 0; fileIndex < updates.length; fileIndex++) {
+            const file = updates[fileIndex];
+            if (!file.data.loaded) continue;
+
+            let keepAllocated = false;
+            for (const allocateMe of toAllocate) {
+                if (file.file === allocateMe.file) {
+                    keepAllocated = true;
+                }
+            }
+            if (keepAllocated) continue;
+
+            console.log("DEALLOCATING: " + file.file.name);
+
+            // Revoke the url and set the data to unloaded
+            URL.revokeObjectURL(file.data.data);
+            file.data = { loaded: false };
+            updatedDisplayablesIndeces.push(fileIndex);
+        }
+        
+        // Update displayables state
+        if (updatedDisplayablesIndeces.length > 0) {
+            setDisplayables(prevDisplayables => {
+                if (!prevDisplayables) return null;
+
+                for (let pfIdx = 0; pfIdx < prevDisplayables.length; pfIdx++) {
+                    if (updatedDisplayablesIndeces.find(updated => updated === pfIdx)) {
+                        prevDisplayables[pfIdx] = updates[pfIdx];
+                    }
+                }
+                return [ ...prevDisplayables ];
+            })
+        }
+
+        // Allocate all the unallocated files from toAllocate
+        for (const file of toAllocate) {
+            // Do nothing if the file is already allocated
+            if (file.data.loaded) {
+                continue;
+            }
+
+            console.log("ALLOCATING: " + file.file.name);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file.file);
+            reader.onloadend = ev => {
+                const dataUrl: DataURL = ev!.target!.result! as DataURL;
+
+                // Once the reader returns data, search for this file in the files
+                //      state and update it
+                setDisplayables(prevList => {
+
+                    if (!prevList) return null;
+                    return prevList.map(prev => {
+                        //
+                        if (prev.file === file.file) {
+                            
+                            if (prev.data.loaded) {
+                                // If the previous is somehow loaded already,
+                                //      revoke this data url and return
+                                URL.revokeObjectURL(dataUrl);
+                                return prev;
+                            }
+
+                            return {
+                                file: prev.file,
+                                data: {
+                                    loaded: true,
+                                    data: dataUrl
+                                }
+                            }
+                        }
+                        return prev;
+                    });
+
+                });
+            }
+        }
+    };
+
+    const firstRef = useRef<boolean>(true);
+    useEffect(() => {
+        if (!displayables) return;
+        if (!firstRef.current) return;
+        firstRef.current = false;
+        allocateFiles(displayableIndex);
+    }, [ displayables ]);
+
+    const location = useLocation();
+    const { files } = (location.state || {}) as ScrollerProps;
+    if (!files && !displayables) {
+        return <>
+            <h2>No files retrieved.  please return to file select.</h2>
+            <button onClick={() => window.location.href = '/'}>Return</button>
+        </>
+    }
+    else if (files) {
+        location.state = {};
+        setDisplayables(files);
+    }
 
     const onMouseDown = (pageX: number, pageY: number) => {
         downPosition.current = [
@@ -100,9 +249,21 @@ export function Scroller() {
         }, [ 0, 0 ]);
 
         const threshWidth = containerRef.current.clientWidth / 10;
-        const threshHeight = containerRef.current.clientHeight / 10;
+        const threshHeight = containerRef.current.clientHeight / 5;
 
-        if (Math.abs(accX) >= threshWidth) {
+        if (Math.abs(accY) >= threshHeight) {
+            if (accY < 0) {
+                console.log("GO OFF TOP");
+                window.location.href = '/';
+                return;
+            }
+            else {
+                console.log("GO OFF BOTTOM");
+                window.location.href = '/';
+                return;
+            }
+        }
+        else if (Math.abs(accX) >= threshWidth) {
             if (accX < 0) {
                 console.log("GO OFF LEFT");
                 moveDisplayableIndex(1);
@@ -110,16 +271,6 @@ export function Scroller() {
             else {
                 console.log("GO OFF RIGHT");
                 moveDisplayableIndex(-1);
-            }
-        }
-        else if (Math.abs(accY) >= threshHeight) {
-            if (accY < 0) {
-                console.log("GO OFF TOP");
-                window.location.href = '/';
-            }
-            else {
-                console.log("GO OFF BOTTOM");
-                window.location.href = '/';
             }
         }
 
@@ -172,7 +323,12 @@ export function Scroller() {
 
                 ref={containerRef}
             >
-                <Displayable display={displayables[displayableIndex]} offset={offset} />
+                {displayables && <Displayable 
+                    file={displayables[displayableIndex]} 
+                    offset={offset} 
+                    idx={displayableIndex}
+                    fullCount={displayables.length}
+                />}
             </div>
         </>
     )

@@ -152,3 +152,18 @@ ul {
   -webkit-column-gap: 20px;
   -moz-column-gap: 20px;
 }
+
+.image {
+  position: relative;
+  width: 100%;
+}
+
+.image-text {
+  position: absolute;
+  bottom: 10px;
+  left:  10px;
+  -webkit-text-stroke: 1px black;
+  color: white;
+  font-size: 25px;
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}

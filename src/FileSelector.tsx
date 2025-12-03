@@ -1,13 +1,63 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ListedFile } from './App';
+import { useNavigate } from 'react-router-dom';
+import type { ScrollerProps } from './Scroller';
 
-export type FileInputProps = {
-    fileList: ListedFile[] | null;
-    updateFilesInList(fileList: File[] | ((prevFileList: File[] | null) => File[])): void;
-    submit: ()=>void;
-};
 
-export function FileSelector ({ fileList, updateFilesInList, submit }: FileInputProps) {
+export function FileSelector () {
+    const navigate = useNavigate();
+    const [ fileList, setFileList ] = useState<ListedFile[] | null>(null);
+    const [ displayingFiles, setDisplayingFiles ] = useState<ListedFile[] | null>(null);
+
+    const updateFilesInList = (files: File[] | ((prevFiles: File[] | null) => File[])) => {
+        setFileList(prevFiles => {
+            if (typeof files === 'function') {
+                const update = files(prevFiles ? prevFiles.map(({ file }) => file) : null);
+                if (!update) return null;
+                files = update;
+            }
+
+            const fileList: ListedFile[] = files.map(file => {
+                return {
+                    file: file,
+                    data: { loaded: false },
+                }
+            });
+
+            const sorted = fileList.sort((a, b) => {
+                try {
+                    const idxA = parseInt(a.file.name.split('_')[1].split('.')[0]);
+                    const idxB = parseInt(b.file.name.split('_')[1].split('.')[0]);
+                    return idxA - idxB;
+                }
+                catch (err: any) {
+                    return Math.random() - 0.5;
+                }
+            });
+
+            return sorted;
+        });
+    }
+
+    const submit = () => {
+        setDisplayingFiles(fileList);
+    }
+
+    useEffect(() => {
+        if (!displayingFiles) return;
+
+        console.log({displayingFiles})
+
+        const files: ScrollerProps = {
+            files: displayingFiles
+        }
+        navigate('/carousel', {
+            state: files
+        });
+    }, [ displayingFiles ]);
+
+
+
     const inputRef = useRef<HTMLInputElement>(null);
     
     const [ selectedFiles, setSelectedFiles ] = useState<File[] | null>(null);
@@ -56,6 +106,7 @@ export function FileSelector ({ fileList, updateFilesInList, submit }: FileInput
             <label htmlFor="fileUpload">Choose files:&nbsp;&nbsp;&nbsp;</label>
             <input 
                 type="file" 
+                accept='image/*'
                 id="fileUpload" 
                 name="files[]" 
                 multiple

@@ -113,49 +113,51 @@ export function FileSelector () {
     };
 
 
-    return (<div className="form-container">
-        <div>
-            <label htmlFor="fileUpload">Choose files:&nbsp;&nbsp;&nbsp;</label>
-            <input 
-                type="file" 
-                accept='image/*,video/*,text/html'
-                id="fileUpload" 
-                name="files[]" 
-                multiple
-                ref={inputRef}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    e.target.files && recieveFileList(e.target.files);
-                }}
-            ></input>
+    return (<div className="middle">
+        <div className="form-container">
+            <div>
+                <label htmlFor="fileUpload">Choose files:&nbsp;&nbsp;&nbsp;</label>
+                <input 
+                    type="file" 
+                    accept='image/*,video/*,text/html'
+                    id="fileUpload" 
+                    name="files[]" 
+                    multiple
+                    ref={inputRef}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        e.target.files && recieveFileList(e.target.files);
+                    }}
+                ></input>
 
-            <div className="button-container">
-                <button onClick={replaceFiles} disabled={selectedFiles === null}>Replace Files</button>
-                &nbsp;&nbsp;&nbsp;
-                <button onClick={addFiles}  disabled={selectedFiles === null}>Add Files</button>
-            </div>
-
-            <div className="button-container">
-                <button onClick={submit} disabled={fileList === null || fileList.length === 0}>View</button>
-            </div>
-
-            {
-                fileList && 
-                <div style={{ marginTop: 60 }}>
-                    <section className="accordion">
-                        <input type="checkbox" name="collapse2" id="handle3" />
-                        <h2 className="handle">
-                            <label htmlFor="handle3">Files</label>
-                        </h2>
-                        <div className="content">
-                            <ul>
-                                {fileList.map(file => {
-                                    return <li key={Math.random()} style={{ color: file.data.loaded ? 'blue' : '' }}>{file.file.name}</li>
-                                })}
-                            </ul>
-                        </div>
-                    </section>
+                <div className="button-container">
+                    <button onClick={replaceFiles} disabled={selectedFiles === null}>Replace Files</button>
+                    &nbsp;&nbsp;&nbsp;
+                    <button onClick={addFiles}  disabled={selectedFiles === null}>Add Files</button>
                 </div>
-            }
+
+                <div className="button-container">
+                    <button onClick={submit} disabled={fileList === null || fileList.length === 0}>View</button>
+                </div>
+
+                {
+                    fileList && 
+                    <div style={{ marginTop: 60 }}>
+                        <section className="accordion">
+                            <input type="checkbox" name="collapse2" id="handle3" />
+                            <h2 className="handle">
+                                <label htmlFor="handle3">Files</label>
+                            </h2>
+                            <div className="content">
+                                <ul>
+                                    {fileList.map(file => {
+                                        return <li key={Math.random()} style={{ color: file.data.loaded ? 'blue' : '' }}>{file.file.name}</li>
+                                    })}
+                                </ul>
+                            </div>
+                        </section>
+                    </div>
+                }
+            </div>
         </div>
     </div>);
 };

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import type { ListedFile } from "../App";
 import type { Pos } from "../Scroller";
 import { SyncLoader } from "react-spinners";
@@ -39,11 +39,12 @@ export const Displayable = ({
     // The phone's GPU is unable to handle so many, and even though the DOM element no longer
     //      appears on the page, there is still some lingering processing going on in the backgroun
     // So, this useEffect is meant to handle that problem
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const mediaRef = useRef<HTMLElement | null>(null);
     useEffect(() => {
-        if (!videoRef.current) return;
+        if (!mediaRef.current) return;
+        if (mediaRef.current.tagName !== 'VIDEO') return;
 
-        const video = videoRef.current;
+        const video = mediaRef.current as HTMLVideoElement;
         if (!video) return;
         
         // Firstly, when a video is loaded, anticipate that a user may just scroll right
@@ -56,12 +57,89 @@ export const Displayable = ({
 
         // Then, when the file updates, manually force destroy the video
         return () => {
-            if (!videoRef.current) return;
+            if (!mediaRef.current) return;
+            if (mediaRef.current.tagName !== 'VIDEO') return;
+
+            const video = mediaRef.current as HTMLVideoElement;
+
             // Not sure exactly what this does, but it does seem to destroy the video
-            videoRef.current.pause();
-            videoRef.current.removeAttribute('src');
-            videoRef.current.load();
+            video.pause();
+            video.removeAttribute('src');
+            video.load();
         };
+    }, [ file ]);
+
+
+    // Manually set the width and height for the overlay text
+    const [overlayStyle, setOverlayStyle] = useState<{ width?: string, height?: string }>({});
+    useEffect(() => {
+        const updateOverlay = () => {
+            if (!mediaRef.current) return;
+            
+            const media = mediaRef.current;
+            const container = media.parentElement!;
+            
+            // Get natural and displayed dimensions
+
+            let naturalWidth, naturalHeight;
+
+            if (media.tagName === 'VIDEO') {
+                const video = media as HTMLVideoElement;
+                naturalWidth = video.videoWidth;
+                naturalHeight = video.videoHeight;
+            } 
+            else {
+                const image = media as HTMLImageElement;
+                naturalWidth = image.naturalWidth;
+                naturalHeight = image.naturalHeight;
+            }
+
+            console.log("HELLO");
+            console.log([ naturalWidth, naturalHeight ])
+            
+            // Skip if dimensions aren't loaded yet
+            if (!naturalWidth || !naturalHeight) return;
+
+            const naturalRatio = naturalWidth / naturalHeight;
+            const containerRatio = container.clientWidth / container.clientHeight;
+            
+            let width, height;
+            
+            if (naturalRatio > containerRatio) {
+                // Media is wider - letterboxed top/bottom
+                width = container.clientWidth;
+                height = width / naturalRatio;
+            } else {
+                // Media is taller - letterboxed left/right
+                height = container.clientHeight;
+                width = height * naturalRatio;
+            }
+            
+            setOverlayStyle({
+                width: `${width}px`,
+                height: `${height}px`,
+            });
+        };
+
+        if (!mediaRef.current) return;
+
+        
+        const media = mediaRef.current;
+        if (media.tagName === 'VIDEO') {
+            // For videos, use 'loadedmetadata' event
+            media.addEventListener('loadedmetadata', updateOverlay);
+        } 
+        else {
+            const img = media as HTMLImageElement;
+
+            // For images, use 'load' event
+            if (img.complete) {
+                updateOverlay();
+            } 
+            else {
+                img.addEventListener('load', updateOverlay);
+            }
+        }
     }, [ file ]);
 
     const dataUrl = file.data.data;
@@ -78,20 +156,21 @@ export const Displayable = ({
     const content: ReactElement = (() => {
         if (contentType === 'image') {
             return <img 
-                style={off}
+                // @ts-ignore
+                ref={mediaRef}
                 src={dataUrl} 
                 onDragStart={e => {e.preventDefault(); return false;}}
             />
         }
         else {
             return <video 
-                ref={videoRef}
+                // @ts-ignore
+                ref={mediaRef}
 
                 // When the page first loads, the mp4 only shows the poster, not the
                 //      video source
                 // For performance reasons (see comments above)
                 poster={file.data.posterUrl || undefined}
-                style={off}
                 key={dataUrl}
 
                 // Video behavior will mimic a gif
@@ -105,11 +184,15 @@ export const Displayable = ({
             </video>
         }
     })();
-
-    return <div key={dataUrl} className="image">
-        <span style={off} className="image-text">{idx+1}/{fullCount}</span>
-        {memory !== null && <span style={off} className="memory-text">{formatBytes(memory)}</span>}
-        <span style={off} className="filename-text">{file.file.name}</span>
-        {content}
-    </div>;
+    
+    return <>
+        <div key={dataUrl} className="image" style={off}>
+            {content}
+            <div className="image-overlay" style={overlayStyle}>
+                {memory !== null && <span className="memory-text">{formatBytes(memory)}</span>}
+                <span className="image-text">{idx+1}/{fullCount}</span>
+                <span className="filename-text">{file.file.name}</span>
+            </div>
+        </div>
+    </>;
 }

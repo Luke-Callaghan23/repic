@@ -11,6 +11,7 @@ import { Displayable } from './components/Displayable.tsx'
 import type { ListedFile } from '../../App.tsx';
 import { useScrollerDrag } from './useScrollerDrag.tsx';
 import { useFileAllocations } from './useFileAllocation.tsx';
+import { useNavigate } from 'react-router-dom';
 
 export type Pos = [ number, number ];
 
@@ -24,6 +25,8 @@ export interface ScrollerProps {
 }
 
 export function Scroller({ memory }: ScrollerProps) {
+    const navigate = useNavigate();
+
     const [ displayables, setDisplayables ] = useState<ListedFile[] | null>();
     const [ displayableIndex, setDisplayableIndex ] = useState<number>(0);
 
@@ -62,7 +65,7 @@ export function Scroller({ memory }: ScrollerProps) {
     if (!allocateFiles) {
         return <>
             <h2>No files retrieved.  please return to file select.</h2>
-            <button onClick={() => window.location.href = '/'}>Return</button>
+            <button onClick={() => navigate('/')}>Return</button>
         </>
     }
 

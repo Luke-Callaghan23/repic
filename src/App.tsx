@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Scroller } from './pages/scroller/Scroller';
 import { FileSelector } from './pages/fileSelector/FileSelector';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route, HashRouter } from 'react-router-dom';
+import PWABadge from './PWABadge';
 
 export type DataURL = string;
 export type ListedFile = { 
@@ -40,12 +41,17 @@ function App() {
         }
     }, []);
 
-    return <Router>
-        <Routes>
-            <Route path="/" element={<FileSelector />} />
-            <Route path="/carousel" element={<Scroller memory={memoryInfo} />} />
-        </Routes>
-    </Router>
+    return <>
+        <PWABadge />
+        <HashRouter>
+            <Routes>
+                <Route path="/" element={<FileSelector />} />
+                <Route path="/carousel" element={<Scroller memory={memoryInfo} />} />
+                <Route path="/repic/" element={<FileSelector />} />
+                <Route path="/repic/carousel" element={<Scroller memory={memoryInfo} />} />
+            </Routes>
+        </HashRouter>
+    </>
 }
 
 createRoot(document.getElementById('root')!).render(

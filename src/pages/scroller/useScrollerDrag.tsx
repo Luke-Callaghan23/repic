@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { Pos } from "./Scroller";
+import { useNavigate } from "react-router-dom";
 
 
 export type MovementWindow = [Pos, Pos, Pos, Pos, Pos, Pos];
@@ -17,6 +18,7 @@ export function useScrollerDrag (
     moveDisplayableIndex: (direction: -1 | 1) => void,
 ) {
 
+    const navigate = useNavigate();
     const containerRef = useRef<HTMLDivElement>(null);
     
     const downPosition = useRef<Pos>(null);
@@ -71,12 +73,12 @@ export function useScrollerDrag (
         if (Math.abs(accY) >= threshHeight) {
             if (accY < 0) {
                 console.log("GO OFF TOP");
-                window.location.href = '/';
+                navigate('/');
                 return;
             }
             else {
                 console.log("GO OFF BOTTOM");
-                window.location.href = '/';
+                navigate('/');
                 return;
             }
         }
@@ -106,7 +108,7 @@ export function useScrollerDrag (
         }
         else if (clientY < 0.05) {
             console.log("WENT OFF TOP");
-            window.location.href = '/';
+            navigate('/');
         }
         else if (clientX / containerRef.current.clientWidth >= 0.95) {
             console.log("WENT OFF RIGHT");
@@ -115,7 +117,7 @@ export function useScrollerDrag (
         }
         else if (clientY / containerRef.current.clientHeight >= 0.95) {
             console.log("WENT OFF BOTTOM");
-            window.location.href = '/';
+            navigate('/');
         }
     };
 

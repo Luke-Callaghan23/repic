@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/repic/',
+
   plugins: [react(), VitePWA({
     registerType: 'prompt',
     injectRegister: false,
@@ -18,6 +20,8 @@ export default defineConfig({
       short_name: 'repic',
       description: 'repic',
       theme_color: '#6a0f7a',
+      start_url: '.',
+      display: 'standalone',
     },
 
     workbox: {

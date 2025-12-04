@@ -38,32 +38,38 @@ export function useFileAllocations (
     const allocateFiles = (currentIdx: number) => {
         if (!displayables) return;
 
-        // Get a wrap-around slice of the displayables, centered around currentIdx
-        //      with a total count of ALLOCATE_COUNT
-        let start = currentIdx - (Math.floor(ALLOCATE_COUNT / 2));
-        let end = currentIdx + (Math.ceil(ALLOCATE_COUNT / 2) - 1)
-        if (start < 0) {
-            start = displayables.length + start;
-        }
-        
-        if (end >= displayables.length) {
-            end = end - displayables.length;
-        }
-        
-        let slice: ListedFile[];;
-        if (start > end) {
-            const sliceA = displayables.slice(start, displayables.length);
-            const sliceB = displayables.slice(0, end+1);
-            slice = [
-                ...sliceA,
-                ...sliceB
-            ]
+        let toAllocate: ListedFile[];
+        if (displayables.length <= ALLOCATE_COUNT) {
+            toAllocate = [...displayables];
         }
         else {
-            slice = displayables.slice(start, end+1);
-        }
+            // Get a wrap-around slice of the displayables, centered around currentIdx
+            //      with a total count of ALLOCATE_COUNT
+            let start = currentIdx - (Math.floor(ALLOCATE_COUNT / 2));
+            let end = currentIdx + (Math.ceil(ALLOCATE_COUNT / 2) - 1)
+            if (start < 0) {
+                start = displayables.length + start;
+            }
+            
+            if (end >= displayables.length) {
+                end = end - displayables.length;
+            }
+            
+            let slice: ListedFile[];;
+            if (start > end) {
+                const sliceA = displayables.slice(start, displayables.length);
+                const sliceB = displayables.slice(0, end+1);
+                slice = [
+                    ...sliceA,
+                    ...sliceB
+                ]
+            }
+            else {
+                slice = displayables.slice(start, end+1);
+            }
 
-        const toAllocate: ListedFile[] = slice;
+            toAllocate = slice;
+        }
 
 
         // Deallocate all other files that are not a part of this list

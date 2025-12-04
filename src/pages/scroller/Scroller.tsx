@@ -87,8 +87,6 @@ export function Scroller({ memory }: ScrollerProps) {
                 }}
                 onTouchEnd={onMouseUp}
 
-                onKeyDown={ev => console.log(ev)}
-
                 onKeyUp={ev => {
                     if (ev.key === 'ArrowLeft') {
                         moveDisplayableIndex(-1);

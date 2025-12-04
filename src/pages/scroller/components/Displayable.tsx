@@ -94,9 +94,6 @@ export const Displayable = ({
                 naturalHeight = image.naturalHeight;
             }
 
-            console.log("HELLO");
-            console.log([ naturalWidth, naturalHeight ])
-            
             // Skip if dimensions aren't loaded yet
             if (!naturalWidth || !naturalHeight) return;
 
@@ -159,6 +156,7 @@ export const Displayable = ({
                 // @ts-ignore
                 ref={mediaRef}
                 src={dataUrl} 
+                style={overlayStyle}
                 onDragStart={e => {e.preventDefault(); return false;}}
             />
         }
@@ -166,6 +164,8 @@ export const Displayable = ({
             return <video 
                 // @ts-ignore
                 ref={mediaRef}
+
+                style={overlayStyle}
 
                 // When the page first loads, the mp4 only shows the poster, not the
                 //      video source

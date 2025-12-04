@@ -1,38 +1,9 @@
-import { useEffect, useRef } from 'react'
-import { useState } from 'react'
-import PWABadge from './PWABadge.tsx'
-
-// import {image} from './content/image.tsx';
-// import {image2} from './content/image2.tsx';
-// import {image3} from './content/image3.tsx';
-// import {video} from './content/video.tsx';
-// import {video2} from './content/video2.tsx';
-// import {video3} from './content/video3.tsx';
-import { Displayable } from './components/Displayable.tsx'
-import { useLocation } from 'react-router-dom';
-import type { DataURL, ListedFile } from './App.tsx';
-
-export type Pos = [ number, number ];
-export type MovementWindow = [Pos, Pos, Pos, Pos, Pos, Pos];
-
-const initalMovementWindow: MovementWindow = [
-    [0, 0],
-    [0, 0],
-    [0, 0],
-    [0, 0],
-    [0, 0],
-    [0, 0],
-];
-
-export interface ScrollerNavigateState {
-    files: ListedFile[] | null,
-}
+import { useEffect, useRef } from "react";
+import type { DataURL, ListedFile } from "../../App";
+import { useLocation } from "react-router-dom";
+import type { ScrollerNavigateState } from "./Scroller";
 
 const ALLOCATE_COUNT = 10;
-
-export interface ScrollerProps {
-    memory: number | null;
-}
 
 function b64toBlob(b64Data: string, contentType: string, sliceSize = 512) {
     const byteCharacters = atob(b64Data);
@@ -55,42 +26,13 @@ function b64toBlob(b64Data: string, contentType: string, sliceSize = 512) {
 }
 
 
-export function Scroller({ memory }: ScrollerProps) {
-    const [ displayables, setDisplayables ] = useState<ListedFile[] | null>();
 
-    const downPosition = useRef<Pos>(null);
-    const [ offset, setOffset ] = useState<Pos | null>(null);
-    const [ latestPosition, setLatestPosition ] = useState<Pos | null>(null);
-
-    const [ displayableIndex, setDisplayableIndex ] = useState<number>(0);
-    const moveDisplayableIndex = (direction: -1 | 1 | 0) => {
-        if (!displayables) return;
-        reset();
-        setDisplayableIndex(currentIdx => {
-
-            let nextIdx = (currentIdx + direction);
-            if (nextIdx < 0) {
-                nextIdx = displayables.length - 1;
-            }
-            else if (nextIdx === displayables.length) {
-                nextIdx = 0;
-            }
-
-            allocateFiles(nextIdx);
-            return nextIdx;
-        });
-    };
-
-    const reset = () => {
-        downPosition.current = null;
-        setOffset(null);
-        setLatestPosition(null);
-        setMovementWindow(initalMovementWindow);
-    }
-
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [ movementWindow, setMovementWindow ] = useState<MovementWindow>(initalMovementWindow);
-
+export function useFileAllocations (
+    displayableIndex: number,
+    displayables: ListedFile[] | null | undefined,
+    setDisplayables: React.Dispatch<React.SetStateAction<ListedFile[] | null | undefined>>
+) {
+    
     // NOTE: it is assumed that all files that are NOT the files provided to this function should be
     //      deallocated
     const allocateFiles = (currentIdx: number) => {
@@ -279,155 +221,18 @@ export function Scroller({ memory }: ScrollerProps) {
         firstRef.current = false;
         allocateFiles(displayableIndex);
     }, [ displayables ]);
+    
 
     const location = useLocation();
     const { files } = (location.state || {}) as ScrollerNavigateState;
     if (!files && !displayables) {
-        return <>
-            <h2>No files retrieved.  please return to file select.</h2>
-            <button onClick={() => window.location.href = '/'}>Return</button>
-        </>
+        return null;
     }
     else if (files) {
         location.state = {};
         setDisplayables(files);
-    }
-
-    const onMouseDown = (pageX: number, pageY: number) => {
-        downPosition.current = [
-            pageX,
-            pageY
-        ];
-        setLatestPosition([ pageX, pageY ]);
-    };
-    const onMouseMove = (pageX: number, pageY: number) => {
-        if (downPosition.current) {
-            const [ initialX, initialY ] = downPosition.current;
-            
-            const movementX = pageX - latestPosition?.[0]!;
-            const movementY = pageY - latestPosition?.[1]!;
-
-            setMovementWindow(prevWindow => {
-                prevWindow.shift();
-                prevWindow.push([ movementX, movementY ]);
-                return [ ...prevWindow ]
-            });
-
-            setOffset([
-                (initialX - pageX) * -1,
-                (initialY - pageY) * -1
-            ]);
-            setLatestPosition([
-                pageX,
-                pageY
-            ]);
-        }
-    };
-    const onMouseUp = () => {
-        if (!containerRef.current) {
-            return reset();
-        }
-
-        const [ accX, accY ]: Pos = movementWindow.reduce(([ aX, aY ], [ cX, cY ]) => {
-            return [ aX + cX, aY + cY ];
-        }, [ 0, 0 ]);
-
-        const threshWidth = containerRef.current.clientWidth / 10;
-        const threshHeight = containerRef.current.clientHeight / 5;
-
-        if (Math.abs(accY) >= threshHeight) {
-            if (accY < 0) {
-                console.log("GO OFF TOP");
-                window.location.href = '/';
-                return;
-            }
-            else {
-                console.log("GO OFF BOTTOM");
-                window.location.href = '/';
-                return;
-            }
-        }
-        else if (Math.abs(accX) >= threshWidth) {
-            if (accX < 0) {
-                console.log("GO OFF LEFT");
-                moveDisplayableIndex(1);
-            }
-            else {
-                console.log("GO OFF RIGHT");
-                moveDisplayableIndex(-1);
-            }
-        }
-
-        reset();
-    };
-    const onMouseLeave = (clientX: number, clientY: number) => {
-        if (!offset) return;
-        if (!containerRef.current) return;
-
-        if (clientX < 0.05) {
-            console.log("WENT OFF LEFT");
-            moveDisplayableIndex(1);
-        }
-        else if (clientY < 0.05) {
-            console.log("WENT OFF TOP");
-            window.location.href = '/';
-        }
-        else if (clientX / containerRef.current.clientWidth >= 0.95) {
-            console.log("WENT OFF RIGHT");
-            moveDisplayableIndex(-1);
-        }
-        else if (clientY / containerRef.current.clientHeight >= 0.95) {
-            console.log("WENT OFF BOTTOM");
-            window.location.href = '/';
-        }
     };
 
 
-    return (
-        <>
-            <PWABadge />
-            <div 
-                id="video-container" 
-                className="video-container"
-                onMouseDown={ev => onMouseDown(ev.pageX, ev.pageY)}
-                onMouseMove={ev => onMouseMove(ev.pageX, ev.pageY)}
-                onMouseUp={onMouseUp}
-                onMouseLeave={ev => onMouseLeave(ev.clientX, ev.clientY)}
-
-                onTouchStart={ev => {
-                    const touch = ev.nativeEvent.touches[0];
-                    return onMouseDown(touch.pageX, touch.pageY);
-                }}
-                onTouchMove={ev => {
-                    const touch = ev.nativeEvent.touches[0];
-                    return onMouseMove(touch.pageX, touch.pageY);
-                }}
-                onTouchEnd={onMouseUp}
-
-                onKeyDown={ev => console.log(ev)}
-
-                onKeyUp={ev => {
-                    if (ev.key === 'ArrowLeft') {
-                        moveDisplayableIndex(-1);
-                    }
-                    else if (ev.key === 'ArrowRight') {
-                        moveDisplayableIndex(1);
-                    }
-                }}
-                tabIndex={0}
-                ref={containerRef}
-            >
-                {displayables && <Displayable 
-                    memory={memory}
-                    file={displayables[displayableIndex]} 
-                    offset={offset} 
-                    idx={displayableIndex}
-                    fullCount={displayables.length}
-                />}
-            </div>
-        </>
-    )
+    return allocateFiles;
 }
-
-
-

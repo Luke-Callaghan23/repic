@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ListedFile } from './App';
+import type { ListedFile } from '../../App';
 import { useNavigate } from 'react-router-dom';
-import type { ScrollerNavigateState } from './Scroller';
+import type { ScrollerNavigateState } from '../scroller/Scroller';
 
 
 export function FileSelector () {
@@ -91,10 +91,6 @@ export function FileSelector () {
         }
         setSelectedFiles(nextFileList);
     };
-
-    useEffect(() => {
-        console.log(fileList)
-    }, [ fileList ]);
 
     const replaceFiles = () => {
         selectedFiles && updateFilesInList([...selectedFiles]);

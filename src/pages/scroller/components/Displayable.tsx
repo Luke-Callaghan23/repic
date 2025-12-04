@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from "react";
-import type { ListedFile } from "../App";
+import type { ListedFile } from "../../../App";
 import type { Pos } from "../Scroller";
 import { SyncLoader } from "react-spinners";
 

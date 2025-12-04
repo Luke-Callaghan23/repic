@@ -3,8 +3,8 @@ import './style/App.css';
 
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Scroller } from './Scroller';
-import { FileSelector } from './FileSelector';
+import { Scroller } from './pages/scroller/Scroller';
+import { FileSelector } from './pages/fileSelector/FileSelector';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 export type DataURL = string;
